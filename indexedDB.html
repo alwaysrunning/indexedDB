@@ -1,0 +1,176 @@
+cache.html
+
+<!DOCTYPE html>
+<html lang='cn' manifest='index.manifest'>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>indexedDB</title>
+</head>
+<body></body>
+
+<script type="text/javascript">
+
+var myDB = {
+    name: 'test',
+    version: 9,
+    db: null
+}
+
+
+var students=[{ 
+    id:1001, 
+    name:"Byron", 
+    age:24 
+},{ 
+    id:1002, 
+    name:"Frank", 
+    age:30 
+},{ 
+    id:1003, 
+    name:"Aaron", 
+    age:26 
+}];
+
+function openDB(name, version){
+    var version = version || 1
+    var request = window.indexedDB.open(name, version);
+
+    request.onsuccess = function(e){
+        console.log("success")
+        myDB.db = e.target.result;
+    }
+
+    request.onerror = function(e){
+        console.log(e)
+    }
+
+    request.onupgradeneeded = function(e){
+        console.log("upgrade")
+        var db = e.target.result;
+        if(!db.objectStoreNames.contains("students")){
+            var store = db.createObjectStore('students',{keyPath:'id'});
+            store.createIndex('nameIndex', 'name', {unique: true});
+            store.createIndex('ageIndex', 'age', {unique:false});
+            //db.deleteObjectStore('students')
+        }
+    }
+}
+
+function closeDB(db){
+    db.close();
+}
+
+function deleteDB(name){
+    window.indexedDB.deleteDatabase(name)
+}     
+
+
+function addData(db, storeName){
+    var transaction = db.transaction(storeName, 'readwrite');
+    var store = transaction.objectStore(storeName);
+
+    var i=-1;
+    while(++i<students.length){
+        store.add(students[i]);
+    }
+}
+
+function getDataByKey(db, storeName, key){
+    var transaction = db.transaction(storeName,'readwrite');
+    var store = transaction.objectStore(storeName);
+
+    var request = store.get(key);
+
+    request.onsuccess = function(e){
+        var student = e.target.result;
+        console.log(student.name)
+    }
+}
+
+
+function updateDataByKey(db, storeName, key, value){
+    var transaction = db.transaction(storeName, 'readwrite');
+    var store = transaction.objectStore(storeName);
+
+    var request = store.get(key);
+    request.onsuccess = function(e){
+        var student = e.target.result
+        student.name = value;
+        store.put(student)
+    }
+}
+
+
+function deleteDataByKey(db, storeName, key){
+    var transaction = db.transaction(storeName, 'readwrite');
+    var store = transaction.objectStore(storeName);
+
+    store.delete(key)
+}
+
+
+function clearObjectStore(db, storeName){
+    var transaction=db.transaction(storeName,'readwrite'); 
+    var store=transaction.objectStore(storeName); 
+    store.clear();
+}
+
+
+function getDataByIndex(db, storeName, key){
+    var transaction = db.transaction(storeName);
+    var store = transaction.objectStore(storeName);
+
+    var index = store.index("ageIndex")
+    index.get(26).onsuccess = function(e){
+        var student = e.target.result;
+        console.log(student.id)
+    }
+}
+
+
+function fetchStoreByCursor(db, storeName){
+    var transaction = db.transaction(storeName);
+    var store = transaction.objectStore(storeName);
+    var request = store.openCursor();
+    request.onsuccess = function(e){
+        var cursor = e.target.result
+        if(cursor){
+            var currentStudents = cursor.value
+            console.log(currentStudents.name);
+            cursor.continue();
+        }
+    }
+}
+
+function getMultipleData(db,storeName){
+    var transaction = db.transaction(storeName);
+    var store = transaction.objectStore(storeName);
+    var index = store.index("nameIndex");
+    var request = index.openCursor(IDBKeyRange.bound('A','F',false,true));  /* A-E之间*/
+    request.onsuccess = function(e){
+        var cursor = e.target.result
+        if(cursor){
+            var currentStudents = cursor.value;
+            console.log(currentStudents)
+            cursor.continue();
+        }
+    }
+}
+
+
+openDB(myDB.name, myDB.version)
+
+setTimeout(function(){
+    //addData(myDB.db, 'students')
+    //updateDataByKey(myDB.db, 'students', 1001, 'andy_yang')
+    //getDataByKey(myDB.db, 'students', 1001)
+    //fetchStoreByCursor(myDB.db, 'students')
+    getMultipleData(myDB.db, 'students')
+    //clearObjectStore(myDB.db, 'students')
+},1000)
+
+
+
+
+</script>
+</html>
